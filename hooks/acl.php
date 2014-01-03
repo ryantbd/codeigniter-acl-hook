@@ -11,7 +11,7 @@ class Acl
 {
     public $config;     // acl config array
     public $roleId;     // current user role Id
-    public $code = 1;   // default value 1: access permitted.
+    public $code = 1;   // default value 1: access permitted, better set from config/hooks
 
     /**
      * init CI instance
@@ -25,11 +25,12 @@ class Acl
      * Called From Hook, your response to the result.
      * @return [type] [description]
      */
-    public function hook_exec_access_control()
+    public function hook_exec_access_control($params = array())
     {
-        $roleId = $this->CI->session->userdata('role_id'); // or get Role Id from somewhere else
-        
-        $this->check_permission($roleId);
+        $this->roleId = $this->CI->session->userdata('role_id'); // or get Role Id from somewhere else
+     
+        $this->handle_hook_params($params);
+        $this->check_permission();
 
         //  handle check permission result code on your own : )
         if ($this->code !== 1)
@@ -70,16 +71,26 @@ class Acl
     }
 
     /**
-     * Check if user role has permission to access target uri
-     * @param  string $roleId [description]
+     * Handling params from hooks config
+     * @param  [type] $params [description]
      * @return [type]         [description]
      */
-    public function check_permission($roleId = '0')
+    public function handle_hook_params($params)
+    {
+        if (isset($params['code']) && is_numeric($params['code']))
+        {
+            $this->code = $params['code'];
+        }
+    }
+
+    /**
+     * Check if user role has permission to access target uri
+     * @return [type]         [description]
+     */
+    public function check_permission()
     {
         $config = $this->get_config();
         $uri    = $this->_get_uri_info();
-
-        $this->roleId = $roleId;
 
         $this->_check_permission_by_uri($uri, $config);
     }
@@ -138,16 +149,12 @@ class Acl
      */
     private function _get_permission_code($roleIdStr)
     {
-        $code = 1;
-
         if ($roleIdStr != '')
         {
             $roleIds = explode(',', $roleIdStr);
 
-            $code = intval(in_array($this->roleId, $roleIds));
+            $this->code = intval(in_array($this->roleId, $roleIds));
         }
-
-        $this->code = $code;
     }
 
     /**
